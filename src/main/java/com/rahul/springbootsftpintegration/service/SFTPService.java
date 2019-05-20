@@ -1,51 +1,45 @@
 package com.rahul.springbootsftpintegration.service;
 
-import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.SftpException;
-import com.rahul.springbootsftpintegration.config.SFTPConfigDomain;
+import com.rahul.springbootsftpintegration.config.SFTPCredentialsConfig;
+import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Vector;
 
 @Service
 public class SFTPService {
 
-    @Autowired
-    private SFTPConfigDomain sftpConfigDomain;
-
     @Autowired()
-    private Session sftpSession;
+    private SFTPCredentialsConfig sftpCredentialsConfig;
 
-    public void uploadFile(MultipartFile file) throws JSchException, SftpException, IOException {
+    public void uploadFile(String remotePath, MultipartFile file) throws JSchException, SftpException, IOException {
         Session session = null;
-        ChannelSftp channelSftp = null;
+        ChannelSftp sftpChannel = null;
         try {
-            session = sftpSession;
-            java.util.Properties config = new java.util.Properties();
-            config.put("StrictHostKeyChecking", "no");
-
-            session.setConfig(config);
+            session = sftpCredentialsConfig.createSFTPSession();
             session.connect();
-            channelSftp = (ChannelSftp) session.openChannel("sftp");
-            channelSftp.connect();
-            channelSftp.cd(sftpConfigDomain.getRemotePath());
-            channelSftp.put(file.getInputStream(), file.getOriginalFilename(), ChannelSftp.OVERWRITE);
+            sftpChannel = (ChannelSftp) session.openChannel("sftp");
+            sftpChannel.connect();
+            sftpChannel.cd(remotePath);
+            sftpChannel.put(file.getInputStream(), file.getOriginalFilename(), ChannelSftp.OVERWRITE);
 
-            channelSftp.disconnect();
+            sftpChannel.disconnect();
             session.disconnect();
         } finally {
-            if (channelSftp != null && channelSftp.isConnected()) {
-                channelSftp.disconnect();
+            if (sftpChannel != null && sftpChannel.isConnected()) {
+                sftpChannel.disconnect();
             }
 
             if (session != null && session.isConnected()) {
@@ -54,19 +48,16 @@ public class SFTPService {
         }
     }
 
-    public void download() throws IOException {
+    public void readFile(String filePath, String fileName) throws IOException {
         Session session = null;
+        ChannelSftp sftpChannel = null;
         try {
-            session = sftpSession;
-            java.util.Properties config = new java.util.Properties();
-            config.put("StrictHostKeyChecking", "no");
-            session.setConfig(config);
+            session = sftpCredentialsConfig.createSFTPSession();
             session.connect();
-            Channel channel = session.openChannel("sftp");
-            channel.connect();
-            ChannelSftp sftpChannel = (ChannelSftp) channel;
+            sftpChannel = (ChannelSftp) session.openChannel("sftp");
+            sftpChannel.connect();
 
-            InputStream stream = sftpChannel.get("/testfile.txt");
+            InputStream stream = sftpChannel.get(filePath+fileName);
             try {
                 BufferedReader br = new BufferedReader(new InputStreamReader(stream));
                 String line;
@@ -83,13 +74,75 @@ public class SFTPService {
                 e.getMessage();
 
             }
-
             sftpChannel.exit();
             session.disconnect();
         } catch (JSchException e) {
             e.printStackTrace();
         } catch (SftpException e) {
             e.printStackTrace();
+        } finally {
+            if (sftpChannel != null && sftpChannel.isConnected()) {
+                sftpChannel.disconnect();
+            }
+
+            if (session != null && session.isConnected()) {
+                session.disconnect();
+            }
         }
+    }
+
+    public byte[] getFileByteArray(String sourcePath, String sourceFileName)
+            throws JSchException, SftpException, IOException {
+        Session session = null;
+        ChannelSftp sftpChannel = null;
+        InputStream inputStream = null;
+        byte[] byteArray = null;
+        try {
+            session = sftpCredentialsConfig.createSFTPSession();
+            session.connect();
+            sftpChannel = (ChannelSftp) session.openChannel("sftp");
+            sftpChannel.connect();
+            inputStream = sftpChannel.get(sourcePath+sourceFileName);
+            byteArray = IOUtils.toByteArray(inputStream);
+            sftpChannel.exit();
+            sftpChannel.disconnect();
+            session.disconnect();
+        } finally {
+            if (sftpChannel != null && sftpChannel.isConnected()) {
+                sftpChannel.disconnect();
+            }
+
+            if (session != null && session.isConnected()) {
+                session.disconnect();
+            }
+        }
+        return byteArray;
+    }
+
+    public ArrayList<ChannelSftp.LsEntry> getFileList(String remotePath) throws JSchException, SftpException {
+        Session session = null;
+        ChannelSftp sftpChannel = null;
+        ArrayList<ChannelSftp.LsEntry> lsEntries= null;
+        try {
+            session = sftpCredentialsConfig.createSFTPSession();
+            session.connect();
+            sftpChannel = (ChannelSftp) session.openChannel("sftp");
+            sftpChannel.connect();
+            sftpChannel.cd(remotePath);
+            Vector filelist = sftpChannel.ls(remotePath);
+            lsEntries=new ArrayList<>(filelist);
+            sftpChannel.exit();
+            sftpChannel.disconnect();
+            session.disconnect();
+        } finally {
+            if (sftpChannel != null && sftpChannel.isConnected()) {
+                sftpChannel.disconnect();
+            }
+
+            if (session != null && session.isConnected()) {
+                session.disconnect();
+            }
+        }
+        return lsEntries;
     }
 }

@@ -5,16 +5,14 @@ public class SFTPConfigDomain {
     private String sftpPort;
     private String user;
     private String password;
-    private String remotePath;
 
     public SFTPConfigDomain(){}
 
-    public SFTPConfigDomain(String sftpAddress, String sftpPort, String user, String password, String remotePath) {
+    public SFTPConfigDomain(String sftpAddress, String sftpPort, String user, String password) {
         this.sftpHost = sftpAddress;
         this.sftpPort = sftpPort;
         this.user = user;
         this.password = password;
-        this.remotePath = remotePath;
     }
 
     public String getSftpHost() {
@@ -47,13 +45,5 @@ public class SFTPConfigDomain {
 
     public void setPassword(String password) {
         this.password = password;
-    }
-
-    public String getRemotePath() {
-        return remotePath;
-    }
-
-    public void setRemotePath(String remotePath) {
-        this.remotePath = remotePath;
     }
 }

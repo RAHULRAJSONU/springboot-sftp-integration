@@ -18,21 +18,18 @@ public class SFTPCredentialsConfig {
     private String sftpUser;
     @Value("${sftp.password}")
     private String sftpPasword;
-    @Value("${sftp.remote.directory.download}")
-    private String sftpRemoteDirectory;
 
-    @Bean
-    public SFTPConfigDomain getSFTPConfigDomain(){
-        return new SFTPConfigDomain(sftpHost,sftpPort,sftpUser,sftpPasword,sftpRemoteDirectory);
-    }
-
-    @Bean(name = "sftpSession")
-    public Session getSFTPSession(){
+    public Session createSFTPSession(){
         JSch jsch = new JSch();
         Session session = null;
         try {
             session = jsch.getSession(sftpUser, sftpHost, Integer.parseInt(sftpPort));
             session.setPassword(sftpPasword);
+            java.util.Properties config = new java.util.Properties();
+            config.put("StrictHostKeyChecking", "no");
+            session.setConfig("PreferredAuthentications",
+                    "publickey,keyboard-interactive,password");
+            session.setConfig(config);
         } catch (JSchException e) {
             e.printStackTrace();
         }
